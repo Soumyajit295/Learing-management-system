@@ -1,92 +1,147 @@
-import React, { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { getTotalUsers } from "../../Redux/Slices/userSlice";
-import { getTotalCourses } from "../../Redux/Slices/courseSlice";
-import { getPayments } from "../../Redux/Slices/paymentSlice";
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { createCourse } from '../../Redux/Slices/courseSlice';
 
-function AdminDashboard() {
-  const { totalUsers } = useSelector((state) => state.user);
-  const { totalCourses } = useSelector((state) => state.course);
-  const { payments, loading } = useSelector((state) => state.payment);
-
+function CreateCourse() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    async function getDetails() {
-      await dispatch(getTotalUsers());
-      await dispatch(getTotalCourses());
-      await dispatch(getPayments());
+  const [courseData, setCourseData] = useState({
+    name: '',
+    description: '',
+    price: '',
+    thumbnail: '',
+  });
+  const [previewImage, setPreviewImage] = useState('');
+
+  function onValueChange(e) {
+    const { name, value } = e.target;
+    setCourseData({
+      ...courseData,
+      [name]: value,
+    });
+  }
+
+  function handleImage(e) {
+    e.preventDefault();
+    const uploadedThumbnail = e.target.files[0];
+    if (!uploadedThumbnail) {
+      toast.error('Failed to upload the thumbnail');
+      return;
     }
-    getDetails();
-  }, [dispatch]);
+    setCourseData({
+      ...courseData,
+      thumbnail: uploadedThumbnail,
+    });
+
+    const fileReader = new FileReader();
+    fileReader.readAsDataURL(uploadedThumbnail);
+    fileReader.addEventListener('load', function () {
+      setPreviewImage(fileReader.result);
+    });
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!courseData.name || !courseData.description || !courseData.price || !courseData.thumbnail) {
+      toast.error('Please fill all fields and upload a thumbnail.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('name', courseData.name);
+    formData.append('description', courseData.description);
+    formData.append('price', courseData.price);
+    formData.append('thumbnail', courseData.thumbnail);
+
+    const res = await dispatch(createCourse(formData));
+    if (res?.payload?.success) {
+      setCourseData({
+        name : '',
+        description : '',
+        price : '',
+        thumbnail : ''
+      })
+      navigate('/courses');
+    }
+  }
 
   return (
-    <div className="p-6 bg-gray-900 text-white min-h-screen">
-      <h1 className="text-3xl font-bold mb-6 text-white">Admin Dashboard</h1>
-      <div className="grid grid-cols-2 gap-6 mb-6">
-        <div className="bg-gray-800 p-4 rounded shadow-lg">
-          <h2 className="text-lg font-semibold text-gray-400">Total Users</h2>
-          <p className="text-4xl font-bold text-white">{totalUsers}</p>
-        </div>
-
-        <div className="bg-gray-800 p-4 rounded shadow-lg">
-          <h2 className="text-lg font-semibold text-gray-400">Total Courses</h2>
-          <p className="text-4xl font-bold text-white">{totalCourses}</p>
-        </div>
-      </div>
-
-      <div className="bg-gray-800 p-4 rounded shadow-lg">
-        <h2 className="text-lg font-semibold text-gray-400 mb-4">
-          Payment Details
-        </h2>
-        {loading ? (
-          <div className="flex items-center justify-center w-full h-screen bg-slate-900">
-            <div className="text-white text-center p-5">
-              <div className="text-xl mb-2">Loading...</div>
-              <i className="fa-solid fa-spinner fa-spin fa-2x"></i>
-            </div>
+    <div className='w-full flex min-h-screen bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white justify-center py-5'>
+      <div className="w-full max-w-5xl mx-auto bg-gray-800 p-12 rounded-lg shadow-xl text-white ">
+        <h2 className="text-4xl font-semibold mb-8 text-center">Create New Course</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-6">
+            <label className="block text-sm mb-2" htmlFor="name">Course Name</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={courseData.name}
+              onChange={onValueChange}
+              placeholder="Enter course name"
+              className="w-full px-4 py-3 rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-orange-500"
+            />
           </div>
-        ) : (
-          <table className="min-w-full table-auto">
-            <thead>
-              <tr className="bg-gray-700">
-                <th className="px-4 py-2 text-left text-gray-300">Username</th>
-                <th className="px-4 py-2 text-left text-gray-300">
-                  Payment ID
-                </th>
-                <th className="px-4 py-2 text-left text-gray-300">Order ID</th>
-                <th className="px-4 py-2 text-left text-gray-300">Signature</th>
-                <th className="px-4 py-2 text-left text-gray-300">
-                  Created At
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments?.map((payment) => (
-                <tr key={payment._id} className="border-b border-gray-700">
-                  <td className="px-4 py-2 text-gray-200">
-                    {payment.user?.name}
-                  </td>{" "}
-                  <td className="px-4 py-2 text-gray-200">
-                    {payment.razorpay_payment_id}
-                  </td>
-                  <td className="px-4 py-2 text-gray-200">
-                    {payment.razorpay_order_id}
-                  </td>
-                  <td className="px-4 py-2 text-gray-200">
-                    {payment.razorpay_signature}
-                  </td>
-                  <td className="px-4 py-2 text-gray-200">
-                    {new Date(payment.createdAt).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+
+          <div className="mb-6">
+            <label className="block text-sm mb-2" htmlFor="description">Description</label>
+            <textarea
+              id="description"
+              name="description"
+              value={courseData.description}
+              onChange={onValueChange}
+              placeholder="Enter course description"
+              rows="4"
+              className="w-full px-4 py-3 rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm mb-2" htmlFor="price">Price (in INR)</label>
+            <input
+              type="number"
+              id="price"
+              name="price"
+              value={courseData.price}
+              onChange={onValueChange}
+              placeholder="Enter price"
+              className="w-full px-4 py-3 rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm mb-2" htmlFor="thumbnail">Thumbnail</label>
+            <input
+              type="file"
+              id="thumbnail"
+              accept="image/*"
+              onChange={handleImage}
+              className="w-full text-gray-400"
+            />
+            {previewImage && (
+              <div className="mt-4">
+                <img
+                  src={previewImage}
+                  alt="Course Thumbnail Preview"
+                  className="w-64 h-48 object-cover rounded-md shadow-lg"
+                />
+              </div>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3 bg-orange-500 hover:bg-orange-600 rounded-md text-white font-semibold text-lg transition-all duration-300 shadow-md hover:shadow-xl"
+          >
+            Create Course
+          </button>
+        </form>
       </div>
     </div>
   );
 }
 
-export default AdminDashboard;
+export default CreateCourse;
