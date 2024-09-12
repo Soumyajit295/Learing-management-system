@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { dropCourse, getSingleCourse } from "../../Redux/Slices/courseSlice";
 import { getUserDetails } from "../../Redux/Slices/userSlice";
 import {
@@ -15,12 +15,10 @@ function SingleCourse() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { courseId } = useParams();
-  const location = useLocation();
-  console.log("Course id : ",courseId)
 
   const [showLectures, setShowLectures] = useState(false);
-  const [showPopup,setShowPopup] = useState(false)
-
+  const [showPopup, setShowPopup] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const { isLoading, singleCourse } = useSelector((state) => state.course);
   const { userData, role } = useSelector((state) => state.user);
@@ -33,7 +31,7 @@ function SingleCourse() {
       await dispatch(getUserDetails(userData?._id));
     }
     fetchUserData();
-  }, [dispatch]);
+  }, [dispatch, userData?._id]);
 
   useEffect(() => {
     async function getCourse() {
@@ -55,21 +53,22 @@ function SingleCourse() {
     handleShowLectures();
   }, [userData, courseId, singleCourse]);
 
-
-  async function deleteCourse(){
-    setShowPopup(false)
-    const res = await dispatch(dropCourse(courseId))
-    if(res?.payload?.success){
-      navigate('/courses')
+  async function deleteCourse() {
+    setShowPopup(false);
+    const res = await dispatch(dropCourse(courseId));
+    if (res?.payload?.success) {
+      navigate('/courses');
     }
   }
-  
-  function onPopupClose(){
-    setShowPopup(false)
+
+  function onPopupClose() {
+    setShowPopup(false);
   }
 
-  const handelPayment = async () => {
+  const handlePayment = async () => {
     try {
+      setRedirecting(true);
+
       const orderResponse = await dispatch(
         createOrder({ amount: singleCourse.price, courseId })
       );
@@ -120,6 +119,8 @@ function SingleCourse() {
     } catch (err) {
       toast.error("Something went wrong with the payment. Please try again.");
       console.error(err);
+    } finally {
+      setRedirecting(false);
     }
   };
 
@@ -155,7 +156,7 @@ function SingleCourse() {
               </button>
             ) : (
               <button
-                onClick={handelPayment}
+                onClick={handlePayment}
                 className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 hover:bg-opacity-80 transition duration-300"
               >
                 Buy Course
@@ -164,13 +165,13 @@ function SingleCourse() {
             {role === "ADMIN" && (
               <>
                 <button 
-                onClick={()=>setShowPopup(true)}
-                className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 hover:bg-opacity-80 transition duration-300">
+                  onClick={() => setShowPopup(true)}
+                  className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 hover:bg-opacity-80 transition duration-300">
                   Delete Course
                 </button>
                 <button 
-                onClick={()=>navigate(`/editcourse/${courseId}`)}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 hover:bg-opacity-80 transition duration-300">
+                  onClick={() => navigate(`/editcourse/${courseId}`)}
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 hover:bg-opacity-80 transition duration-300">
                   Edit Course
                 </button>
               </>
@@ -195,11 +196,17 @@ function SingleCourse() {
           </div>
         </div>
       </div>
-      {
-        showPopup && (
-            <DeletePopup showPopup={showPopup} onClose={onPopupClose} onConfirm={deleteCourse} message={"Are you sure you want to delete the course?"}/>
-        )
-      }
+      {showPopup && (
+        <DeletePopup showPopup={showPopup} onClose={onPopupClose} onConfirm={deleteCourse} message={"Are you sure you want to delete the course?"} />
+      )}
+      {redirecting && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+          <div className="text-white text-center p-5">
+            <div className="text-xl mb-2">Redirecting to payment...</div>
+            <i className="fa-solid fa-spinner fa-spin fa-2x"></i>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
