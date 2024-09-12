@@ -3,11 +3,18 @@ import app from './app.js'
 import { connectToDb } from './db/db.js'
 import cloudinary from 'cloudinary'
 import Razorpay from 'razorpay';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config({
     path : '.env'
 })
 
+const uploadDir = path.join(__dirname, 'uploads');
+
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
 export const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_SECRET,
