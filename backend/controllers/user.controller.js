@@ -11,53 +11,62 @@ const cookieOptions = {
 /* Registration controller */
 
 export const register = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Avatar is required",
+        });
+      }
+  
+      const localPath = req.file.path;
+      const avatar = await uploadAtCloudinary(localPath);
+  
+      if (!avatar || !avatar.data || !avatar.data.secure_url) {
+        return res.status(400).json({
+          success: false,
+          message: "Failed to upload avatar",
+        });
+      }
+  
+      const { name, email, password } = req.body;
+      if (!name || !email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "All fields are required",
+        });
+      }
+  
+      const existedUser = await User.findOne({ email });
+      if (existedUser) {
+        return res.status(400).json({
+          success: false,
+          message: "User already registered",
+        });
+      }
+  
+      const user = new User({
+        name,
+        email,
+        password, // Ensure this is hashed in the User model
+        avatar: avatar.data.secure_url,
+      });
+  
+      await user.save();
+  
+      return res.status(201).json({
+        success: true,
+        message: "User registered successfully",
+      });
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).json({
         success: false,
-        message: "Avatar is required",
+        message: "Internal server error",
       });
     }
-    const localPath = req.file.path;
-    const avatar = await uploadAtCloudinary(localPath);
-    if (!avatar) {
-      return res.status(400).json({
-        success: false,
-        message: "Avatar is required",
-      });
-    }
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required",
-      });
-    }
-    const existedUser = await User.findOne({ email });
-    if (existedUser) {
-      return res.status(400).json({
-        success: false,
-        message: "User already registered",
-      });
-    }
-    const user = await User.create({
-      name,
-      email,
-      password,
-      avatar: avatar?.data?.secure_url,
-    });
-    await user.save();
-    return res.status(200).json({
-      success: true,
-      message: "User registered successfully",
-    });
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-};
+  };
+  
 
 /* Login Controller */
 
