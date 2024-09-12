@@ -4,7 +4,7 @@ import path from 'path';
 
 export const uploadAtCloudinary = async (localPath) => {
     if (!localPath) {
-        return null;
+        return { success: false, message: 'No file provided' };
     }
 
     try {
@@ -18,35 +18,28 @@ export const uploadAtCloudinary = async (localPath) => {
             options = {
                 width: 250,
                 height: 250,
-                crop: 'limit',  
+                crop: 'limit',
             };
         } else if (fileExtension.match(/\.(mp4|mkv|mov|avi)$/)) {
             resourceType = 'video';
             options = {
                 resource_type: 'video',
-                chunk_size: 6000000,  
+                chunk_size: 6000000,
             };
         } else {
-            return {
-                success: false,
-                message: 'Unsupported file type',
-            };
+            return { success: false, message: 'Unsupported file type' };
         }
 
+        console.log(`Uploading file: ${localPath} as ${resourceType}`);
         const result = await cloudinary.v2.uploader.upload(localPath, options);
 
         if (result) {
             fs.unlinkSync(localPath);
-            return {
-                success: true,
-                data: result,
-            };
+            console.log(`Upload successful: ${result.secure_url}`);
+            return { success: true, data: result };
         }
     } catch (err) {
-        console.log(`Cloudinary error: ${err.message}`);
-        return {
-            success: false,
-            message: `Cloudinary upload failed: ${err.message}`,
-        };
+        console.error(`Cloudinary error: ${err.message}`);
+        return { success: false, message: `Cloudinary upload failed: ${err.message}` };
     }
 };
